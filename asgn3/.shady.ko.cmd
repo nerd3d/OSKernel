@@ -1,0 +1,1 @@
+cmd_/home/myKernel/asgn3/shady.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-3.13.0-45-generic/scripts/module-common.lds --build-id  -o /home/myKernel/asgn3/shady.ko /home/myKernel/asgn3/shady.o /home/myKernel/asgn3/shady.mod.o
