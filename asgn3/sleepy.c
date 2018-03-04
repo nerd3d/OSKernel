@@ -114,7 +114,7 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
 	
   /* YOUR CODE HERE */
   
-  // wait_even_interruptable_timeout(queue, condition, timeout);
+  // wait_event_interruptable_timeout(queue, condition, timeout);
 
   /* END YOUR CODE */
 	
