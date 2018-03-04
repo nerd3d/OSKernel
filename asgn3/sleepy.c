@@ -46,6 +46,9 @@ module_param(sleepy_ndevices, int, S_IRUGO);
 static unsigned int sleepy_major = 0;
 static struct sleepy_dev *sleepy_devices = NULL;
 static struct class *sleepy_class = NULL;
+/*** ADDED by Chris Allan ***/
+static DECLARE_WAIT_QUEUE_HEAD(w_que);
+static int flag = 0;
 /* ================================================================ */
 
 int 
@@ -110,6 +113,8 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
 {
   struct sleepy_dev *dev = (struct sleepy_dev *)filp->private_data;
   ssize_t retval = 0;
+  unsigned int devNum;
+  ssize_t timeout = 0;
 	
   if (mutex_lock_killable(&dev->sleepy_mutex))
     return -EINTR;
@@ -121,10 +126,15 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
     return -EINVAL;
 
   copy_from_user(&dev->data, buf, count);
-  printk("sleepy for %u seconds.\n", (unsigned int)(dev->data));
+  timeout = (ssize_t)(dev->data);
+
+  devNum = iminor(filp->f_path.dentry->d_inode);
+
+  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd \n", 
+	 devNum, timeout);
 
   // Go to sleep for given amount of time... (in jiffies)
-  // wait_event_interruptable_timeout(queue, condition, timeout);
+  // wait_event_interruptible_timeout(w_que, flag != 0, timeout);
   //  *  Where does the queue need to sit? do I create it?
   //  *  returns the remaining jiffies, or 0 (or -ERESTARTSYS)
 
@@ -240,7 +250,7 @@ sleepy_init_module(void)
   int i = 0;
   int devices_to_destroy = 0;
   dev_t dev = 0;
-	
+
   if (sleepy_ndevices <= 0)
     {
       printk(KERN_WARNING "[target] Invalid value of sleepy_ndevices: %d\n", 
