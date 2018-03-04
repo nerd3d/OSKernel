@@ -27,6 +27,7 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/mutex.h>
+#include <linux/sched.h>
 
 #include <asm/uaccess.h>
 
@@ -46,8 +47,6 @@ module_param(sleepy_ndevices, int, S_IRUGO);
 static unsigned int sleepy_major = 0;
 static struct sleepy_dev *sleepy_devices = NULL;
 static struct class *sleepy_class = NULL;
-/*** ADDED by Chris Allan ***/
-static int flag;
 /* ================================================================ */
 
 int 
@@ -130,13 +129,14 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
 
   devNum = iminor(filp->f_path.dentry->d_inode);
 
-  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd \n", 
-	 devNum, timeout);
+  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd\n", 
+	   devNum, timeout);
 
   // Go to sleep for given amount of time... (in jiffies)
   mutex_unlock(&dev->sleepy_mutex);
-  // timeLeft = wait_event_interruptible_timeout(dev->sleep_queue, flag != 0, timeout);
-  //  *  Where does the queue need to sit? do I create it?
+  timeLeft = wait_event_interruptible_timeout(dev->sleep_queue, 
+			dev->flag != 0, timeout*66666/HZ);
+
   //  *  Each needs its own wakeup queue (array of queues)
   //  *  returns the remaining jiffies, or 0 (or -ERESTARTSYS)
   if (mutex_lock_killable(&dev->sleepy_mutex))
@@ -295,6 +295,7 @@ sleepy_init_module(void)
       goto fail;
     }
     init_waitqueue_head(&(sleepy_devices[i].sleep_queue));
+    sleepy_devices[i].flag = 0;
   }
   
   printk ("sleepy module loaded\n");

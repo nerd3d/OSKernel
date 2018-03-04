@@ -8,7 +8,6 @@
 #define SLEEPY_NDEVICES 10
 #endif
 
-#include <linux/capability.h>
 #include <linux/wait.h>
 
 /* The structure to represent 'sleepy' devices. 
@@ -25,5 +24,6 @@ struct sleepy_dev {
   struct cdev cdev;
   /*** ADDED by Chris Allan ***/
   wait_queue_head_t sleep_queue;
+  int flag;
 };
 #endif /* SLEEPY_H_1727_INCLUDED */
