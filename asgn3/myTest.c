@@ -21,7 +21,7 @@ int main(void) {
   ssize_t r;
   
   /* writing to device 0*/
-  fd = open("/dev/sleepy", O_RDWR);
+  fd = open("/dev/sleepy0", O_RDWR);
   assert(fd != -1);
 
   sleep_len = 10;

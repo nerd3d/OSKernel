@@ -96,7 +96,13 @@ sleepy_read(struct file *filp, char __user *buf, size_t count,
 	
   /* YOUR CODE HERE */
 
+  // Set Wakeup flag for sleepy_write
+
   /* END YOUR CODE */
+
+  /* DEBUG TEST*/
+  printk("sleepy waking up\n");
+  /* END DEBUG TEST*/
 	
   mutex_unlock(&dev->sleepy_mutex);
   return retval;
@@ -113,10 +119,22 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
     return -EINTR;
 	
   /* YOUR CODE HERE */
-  
+
+  // Varify parameter is a valid integer (4byte): if not -> error
   // wait_event_interruptable_timeout(queue, condition, timeout);
+  //  *  Where does the queue need to sit? do I create it?
+
+  // determine reason for waking up: 
+  //  IF wait ended -> return 0
+  //  IF condition met -> return 'time left'
+  //  Else -> go back to sleep for 'time left'
+  //    ** How do I determine 'time left' to sleep again
 
   /* END YOUR CODE */
+
+  /* DEBUG TEST*/
+  printk("sleepy going to sleep\n");
+  /* END DEBUG TEST*/
 	
   mutex_unlock(&dev->sleepy_mutex);
   return retval;
