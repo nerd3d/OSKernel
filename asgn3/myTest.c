@@ -28,6 +28,8 @@ int main(void) {
   r = write(fd, &sleep_len, sizeof sleep_len);
   assert(r >= 0);
   close(fd);
+  
+  return 0;
 
   /* sleep for a second*/
   sleep(1);

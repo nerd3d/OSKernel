@@ -120,15 +120,18 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
 	
   /* YOUR CODE HERE */
 
-  // Varify parameter is a valid integer (4byte): if not -> error
+  // Varify parameter is a valid integer (4byte): 
+	printk("data = %d\n", (int*)dev->data);
+  //	if not -> return -EINVAL
+  // Go to sleep for given amount of time... (in jiffies)
   // wait_event_interruptable_timeout(queue, condition, timeout);
   //  *  Where does the queue need to sit? do I create it?
+  //  * returns the remaining jiffies, or 0 (or -ERESTARTSYS)
 
   // determine reason for waking up: 
   //  IF wait ended -> return 0
   //  IF condition met -> return 'time left'
-  //  Else -> go back to sleep for 'time left'
-  //    ** How do I determine 'time left' to sleep again
+  //  Else -> go back to sleep for 'time left' (loop)
 
   /* END YOUR CODE */
 
