@@ -1,0 +1,6 @@
+#! /bin/bash
+echo "replacing sleepy mod\n"
+sudo rmmod sleepy.ko
+sudo insmod sleepy.ko
+sudo ./myRun
+dmesg | grep "sleepy"
