@@ -212,6 +212,10 @@ sleepy_construct_device(struct sleepy_dev *dev, int minor,
     cdev_del(&dev->cdev);
     return err;
   }
+
+  init_waitqueue_head(&(dev->sleep_queue));
+  dev->flag = 0;
+  
   return 0;
 }
 
@@ -297,8 +301,6 @@ sleepy_init_module(void)
       devices_to_destroy = i;
       goto fail;
     }
-    init_waitqueue_head(&(sleepy_devices[i].sleep_queue));
-    sleepy_devices[i].flag = 0;
   }
   
   printk ("sleepy module loaded\n");
