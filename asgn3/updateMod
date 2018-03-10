@@ -1,7 +1,9 @@
 #! /bin/bash
-echo "replacing sleepy mod\n"
+make
+gcc -Wall test_sleepy.c -o myRun
 sudo dmesg --clear
 sudo rmmod sleepy.ko
 sudo insmod sleepy.ko
+echo "<Module updated>"
 sudo ./myRun
-dmesg
+dmesg | grep "SLEEPY"

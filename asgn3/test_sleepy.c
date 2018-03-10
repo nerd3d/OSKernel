@@ -33,7 +33,7 @@ int main(void) {
     }
   }
 
-  /* sleep for a second*/
+  /* sleep for 1 seconds*/
   sleep(1);
 
   /* read from device 9*/

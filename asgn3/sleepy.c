@@ -91,13 +91,22 @@ sleepy_read(struct file *filp, char __user *buf, size_t count,
 {
   struct sleepy_dev *dev = (struct sleepy_dev *)filp->private_data;
   ssize_t retval = 0;
+  unsigned int devNum;
 	
   if (mutex_lock_killable(&dev->sleepy_mutex))
     return -EINTR;
 	
   /* YOUR CODE HERE */
 
+  devNum = iminor(filp->f_path.dentry->d_inode);
+  printk("SLEEPY_READ DEVICE (%d): Process is waking everyone up.\n", 
+	   devNum);
+
+
   // Set Wakeup flag for sleepy_write
+  dev->flag = 1;
+  // wake up processes writing to this device
+  wake_up_interruptible(&dev->sleep_queue);
 
   /* END YOUR CODE */
 	
@@ -125,31 +134,25 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
     return -EINVAL;
 
   copy_from_user(&dev->data, buf, count);
-  timeout = (ssize_t)(dev->data);
-
+  timeout = (ssize_t)(dev->data) * 66666 / HZ;
   devNum = iminor(filp->f_path.dentry->d_inode);
 
-  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd\n", 
-	   devNum, timeout);
-
   // Go to sleep for given amount of time... (in jiffies)
-  mutex_unlock(&dev->sleepy_mutex);
-  timeLeft = wait_event_interruptible_timeout(dev->sleep_queue, 
-			dev->flag != 0, timeout*66666/HZ);
-
-  //  *  Each needs its own wakeup queue (array of queues)
   //  *  returns the remaining jiffies, or 0 (or -ERESTARTSYS)
-  if (mutex_lock_killable(&dev->sleepy_mutex))
-    return -EINTR;
+  dev->flag = 0;
+  mutex_unlock(&dev->sleepy_mutex);
 
-  // determine reason for waking up: 
-  //  IF wait ended -> return 0
-  //  IF condition met -> return 'time left'
-  //  Else -> go back to sleep for 'time left' (loop)
+  timeLeft = wait_event_interruptible_timeout(dev->sleep_queue, 
+			dev->flag != 0, timeout);
+  if(timeLeft < 0)
+    return -ERESTARTSYS; // something when wrong
+
+  retval = timeLeft*HZ/66666;
+  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd\n", 
+	   devNum, retval);
 
   /* END YOUR CODE */
-	
-  mutex_unlock(&dev->sleepy_mutex);
+
   return retval;
 }
 

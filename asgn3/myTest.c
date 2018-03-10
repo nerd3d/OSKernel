@@ -30,8 +30,6 @@ int main(void) {
   assert(r >= 0);
   close(fd);
   
-  return 0;
-
   /* sleep for a second*/
   sleep(1);
 
