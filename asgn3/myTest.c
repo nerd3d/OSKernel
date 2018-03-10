@@ -26,6 +26,7 @@ int main(void) {
 
   sleep_len = 10;
   r = write(fd, &sleep_len, sizeof sleep_len);
+  printf("write returned: %zd\n", r);
   assert(r >= 0);
   close(fd);
   

@@ -47,8 +47,7 @@ static unsigned int sleepy_major = 0;
 static struct sleepy_dev *sleepy_devices = NULL;
 static struct class *sleepy_class = NULL;
 /*** ADDED by Chris Allan ***/
-static DECLARE_WAIT_QUEUE_HEAD(w_que);
-static int flag = 0;
+static int flag;
 /* ================================================================ */
 
 int 
@@ -115,6 +114,7 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
   ssize_t retval = 0;
   unsigned int devNum;
   ssize_t timeout = 0;
+  ssize_t timeLeft = 0;
 	
   if (mutex_lock_killable(&dev->sleepy_mutex))
     return -EINTR;
@@ -134,9 +134,13 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
 	 devNum, timeout);
 
   // Go to sleep for given amount of time... (in jiffies)
-  // wait_event_interruptible_timeout(w_que, flag != 0, timeout);
+  mutex_unlock(&dev->sleepy_mutex);
+  // timeLeft = wait_event_interruptible_timeout(dev->sleep_queue, flag != 0, timeout);
   //  *  Where does the queue need to sit? do I create it?
+  //  *  Each needs its own wakeup queue (array of queues)
   //  *  returns the remaining jiffies, or 0 (or -ERESTARTSYS)
+  if (mutex_lock_killable(&dev->sleepy_mutex))
+    return -EINTR;
 
   // determine reason for waking up: 
   //  IF wait ended -> return 0
@@ -290,6 +294,7 @@ sleepy_init_module(void)
       devices_to_destroy = i;
       goto fail;
     }
+    init_waitqueue_head(&(sleepy_devices[i].sleep_queue));
   }
   
   printk ("sleepy module loaded\n");
