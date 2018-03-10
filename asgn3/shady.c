@@ -39,6 +39,8 @@ MODULE_LICENSE("GPL");
 
 #define SHADY_DEVICE_NAME "shady"
 
+asmlinkage int (*old_open)(const char*, int, int);
+
 /* parameters */
 static int shady_ndevices = SHADY_NDEVICES;
 
@@ -48,7 +50,20 @@ module_param(shady_ndevices, int, S_IRUGO);
 static unsigned int shady_major = 0;
 static struct shady_dev *shady_devices = NULL;
 static struct class *shady_class = NULL;
+/*** ADDED by Christopher Allan***/
+static unsigned long syscall_table = 0xffffffff81801400;  // sys_call_table
+                               // open index = 0x02 OR 0x05 ???
+                               //  -> 0xffffffff811c3080
+
 /* ================================================================ */
+
+void
+set_addr_rw (unsigned long addr) 
+{
+  unsigned int level;
+  pte_t *pte = lookup_address(addr, & level);
+  if (pte->pte &~ _PAGE_RW) pte->pte |= _PAGE_RW;
+}
 
 int 
 shady_open(struct inode *inode, struct file *filp)
@@ -207,6 +222,12 @@ shady_cleanup_module(int devices_to_destroy)
   return;
 }
 
+asmlinkage int my_open(const char* file, int flags, int mode)
+{
+  printk("SHADY_MODULE: Captured Open...\n");
+  return old_open(file, flags, mode);
+}
+
 static int __init
 shady_init_module(void)
 {
@@ -214,6 +235,10 @@ shady_init_module(void)
   int i = 0;
   int devices_to_destroy = 0;
   dev_t dev = 0;
+
+  set_addr_rw(syscall_table);
+  old_open = ((unsigned long*)syscall_table)[5];
+  ((unsigned long*)syscall_table)[5] = my_open;
 	
   if (shady_ndevices <= 0)
     {

@@ -29,26 +29,6 @@ int main(void) {
   printf("write returned: %zd\n", r);
   assert(r >= 0);
   close(fd);
-  
-  /* sleep for a second*/
-  sleep(1);
-
-  /* read from device 0*/
-  fd = open("/dev/sleepy0", O_RDWR);
-  assert(fd != -1);
-
-  r = read(fd, NULL, 0);
-  assert(r >= 0);
-  close(fd);
-
-  sleep(7); /* sleep for 7 seconds*/
-
-  /* now read from device 0*/
-  fd = open("/dev/sleepy0", O_RDWR);
-  assert(fd != -1);
-  r = read(fd, NULL, 0);
-  assert(r >= 0);
-  close(fd);
-  
+    
   return 0;
 }
