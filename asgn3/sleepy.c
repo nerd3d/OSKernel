@@ -14,6 +14,13 @@
  * by the Free Software Foundation.
  ======================================================================== */
 
+/*
+ * Modified by Christopher Allan
+ * Class: CS 5460
+ * Semester: Spring 2018
+ * School: University of Utah
+ */
+
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -28,6 +35,7 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
+#include <linux/time.h>
 
 #include <asm/uaccess.h>
 
@@ -119,10 +127,14 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
 	     loff_t *f_pos)
 {
   struct sleepy_dev *dev = (struct sleepy_dev *)filp->private_data;
+  /*** ADDED by Chris Allan ***/
   ssize_t retval = 0;
   unsigned int devNum;
-  ssize_t timeout = 0;
-  ssize_t timeLeft = 0;
+  //  ssize_t timeout = 0;
+  //  ssize_t timeLeft = 0;
+  struct timespec timeout;
+  unsigned long jiffsleft;
+  /***  ***/
 	
   if (mutex_lock_killable(&dev->sleepy_mutex))
     return -EINTR;
@@ -133,23 +145,23 @@ sleepy_write(struct file *filp, const char __user *buf, size_t count,
   if(count != 4)
     return -EINVAL;
 
-  copy_from_user(&dev->data, buf, count);
-  timeout = (ssize_t)(dev->data) * 66666 / HZ;
+  timeout.tv_sec = (time_t)(*buf);
+  timeout.tv_nsec = timeout.tv_sec * 1000000000;
   devNum = iminor(filp->f_path.dentry->d_inode);
 
-  // Go to sleep for given amount of time... (in jiffies)
-  //  *  returns the remaining jiffies, or 0 (or -ERESTARTSYS)
   dev->flag = 0;
   mutex_unlock(&dev->sleepy_mutex);
 
-  timeLeft = wait_event_interruptible_timeout(dev->sleep_queue, 
-			dev->flag != 0, timeout);
-  if(timeLeft < 0)
+  // Go to sleep for given amount of time... (in jiffies)
+  //  *  returns the remaining jiffies, or 0 (or -ERESTARTSYS)
+  jiffsleft = wait_event_interruptible_timeout(dev->sleep_queue, 
+		      dev->flag != 0, timespec_to_jiffies(&timeout));
+  if(jiffsleft < 0)
     return -ERESTARTSYS; // something when wrong
 
-  retval = timeLeft*HZ/66666;
-  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd\n", 
-	   devNum, retval);
+  jiffies_to_timespec(jiffsleft, &timeout);
+  retval = timeout.tv_sec;
+  printk("SLEEPY_WRITE DEVICE (%d): remaining = %zd\n", devNum, retval);
 
   /* END YOUR CODE */
 
@@ -213,8 +225,10 @@ sleepy_construct_device(struct sleepy_dev *dev, int minor,
     return err;
   }
 
+  /*** ADDED by Chris Allan ***/
   init_waitqueue_head(&(dev->sleep_queue));
   dev->flag = 0;
+  /***  ***/
   
   return 0;
 }

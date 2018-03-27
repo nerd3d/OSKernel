@@ -1,5 +1,12 @@
 /* sleepy.h */
 
+/*
+ * Modified by Christopher Allan
+ * Class: CS 5460
+ * Semester: Spring 2018
+ * School: University of Utah
+ */
+
 #ifndef SLEEPY_H_1727_INCLUDED
 #define SLEEPY_H_1727_INCLUDED
 
@@ -25,5 +32,6 @@ struct sleepy_dev {
   /*** ADDED by Chris Allan ***/
   wait_queue_head_t sleep_queue;
   int flag;
+  /***  ***/
 };
 #endif /* SLEEPY_H_1727_INCLUDED */
